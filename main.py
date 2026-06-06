@@ -3,11 +3,9 @@ import sys
 import numpy as np
 
 from analysis import analyze
-from concentrated_5_phase import concentrated_5_phase
-from dlpm import double_layer_planar_motor
-from dlpm_2022_Kleijer import dlpm_2022
-from four_phase_linear import four_phase_linear
-from ideal_4_phase import ideal_4_phase
+from geometry.dlpm_2013 import double_layer_planar_motor
+from geometry.dlpm_2022_Kleijer import dlpm_2022
+from geometry.ideal_distributed import ideal_5_phase, ideal_4_phase
 from linalg import *
 
 
@@ -159,34 +157,18 @@ def generate_tight_biased_frame_v3(ratio=3.0):
     return frame
 
 
-def get_5cell_clifford_vertices():
-    # Indices for the 5 vertices
-    k = np.arange(5)
-
-    # Angles with winding speeds 1 and 2
-    theta = 2 * np.pi * 1 * k / 5
-    phi = 2 * np.pi * 2 * k / 5
-
-    # Coordinates: [cos(theta), sin(theta), cos(phi), sin(phi)] / sqrt(2)
-    # This results in a 4x5 array where each column is a vertex
-    vertices = np.array([
-        np.cos(theta),
-        np.sin(theta),
-        np.cos(phi),
-        np.sin(phi)
-    ]) / np.sqrt(2)
-
-    return vertices
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     np.set_printoptions(suppress=True, precision=3)
 
     # motor = ideal_4_phase()
-    motor = double_layer_planar_motor()
+    # motor = double_layer_planar_motor()
     # motor = dlpm_2022()
+    # motor = copam_2009()
     # motor = four_phase_linear()
     # motor = concentrated_5_phase()
+    motor = ideal_4_phase()
     analyze(motor)
     sys.exit(0)
 

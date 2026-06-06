@@ -1,80 +1,61 @@
 import numpy as np
 
 
-
-def get_components(j_x, j_y, span):
-
-    x_spectrum = np.fft.fftshift(np.fft.fftn(j_x))
-    y_spectrum = np.fft.fftshift(np.fft.fftn(j_y))
-
-    n=j_x.shape[0]
-    dc = int(n / 2)
-
-    result = np.empty(4)
-    result[0] = x_spectrum[dc][dc + span].real
-    result[1] = x_spectrum[dc][dc + span].imag
-    result[2] = y_spectrum[dc + span][dc].real
-    result[3] = y_spectrum[dc + span][dc].imag
-
-    return result / n**2
-
-
-# def compute_streamfunction_generic(fft_Jx, fft_Jy):
-#     """
-#     Computes the 2D FFT of the streamfunction (psi) using normalized/generic grids.
-#
-#     Parameters:
-#     -----------
-#     fft_Jx, fft_Jy : ndarray
-#         2D complex arrays of the current density Fourier coefficients.
-#     """
-#     Ny, Nx = fft_Jx.shape
-#
-#     # Create generic, unit-less frequency indices matching standard FFT layout
-#     # (0 to N/2 for positive frequencies, -N/2 to -1 for negative frequencies)
-#     kx = np.fft.fftfreq(Nx)
-#     ky = np.fft.fftfreq(Ny)
-#
-#     # Broadcast to 2D grids
-#     Kx, Ky = np.meshgrid(kx, ky)
-#
-#     # Compute denominator
-#     K_squared = Kx ** 2 + Ky ** 2
-#
-#     # Invert the curl: psi = (-i*kx*Jy + i*ky*Jx) / (kx^2 + ky^2)
-#     with np.errstate(divide='ignore', invalid='ignore'):
-#         fft_psi = (-1j * Kx * fft_Jy + 1j * Ky * fft_Jx) / K_squared
-#
-#     # Handle the DC component / singular points safely
-#     fft_psi[K_squared == 0] = 0.0
-#
-#     return fft_psi
-
-def compute_streamfunction(fft_Jx_shifted, fft_Jy_shifted):
+def validate_current_density(x_spectrum, y_spectrum, Kx, Ky, tolerance=1e-5):
     """
-    Computes the 2D FFT of the streamfunction (psi) from ALREADY SHIFTED
-    current density spectra.
+    Validates current density entirely in the frequency domain.
+    Checks for:
+    1. A non-zero DC component (extracted from the [0,0] FFT coefficient).
+    2. Divergence (div J != 0).
     """
-    Ny, Nx = fft_Jx_shifted.shape
+    # Total number of elements to normalize the DC component
+    num_elements = x_spectrum.size
 
-    # 1. Generate standard frequencies
-    kx = np.fft.fftfreq(Nx)
-    ky = np.fft.fftfreq(Ny)
+    # 1. Check for DC Component via the [0,0] frequency bin
+    dc_x = np.abs(x_spectrum[0, 0]) / num_elements
+    dc_y = np.abs(y_spectrum[0, 0]) / num_elements
 
-    # 2. Shift the frequencies to match the shifted input spectra!
-    kx_shifted = np.fft.fftshift(kx)
-    ky_shifted = np.fft.fftshift(ky)
+    if dc_x > tolerance or dc_y > tolerance:
+        print(f"[Warning] Non-zero DC component detected! Normalized |DC_x|: {dc_x:.2e}, |DC_y|: {dc_y:.2e}")
 
-    # 3. Create the 2D grids
-    Kx, Ky = np.meshgrid(kx_shifted, ky_shifted)
+    # 2. Check for Divergence (div J = i*Kx*Jx_fft + i*Ky*Jy_fft)
+    divergence_fft = 1j * Kx * x_spectrum + 1j * Ky * y_spectrum
+    max_div = np.max(np.abs(divergence_fft)) / num_elements
 
-    # 4. Math remains identical
+    if max_div > tolerance:
+        print(f"[Warning] Significant divergence detected in current density! Max |div(J)|: {max_div:.2e}")
+
+
+def compute_streamfunction(Jx, Jy):
+    """
+    Computes the 2D FFT of the streamfunction (psi) from a 2D current density grid
+    """
+
+    # fourier transform the input current vector components
+    x_spectrum = np.fft.fftn(Jx)
+    y_spectrum = np.fft.fftn(Jy)
+
+    # create a grid of wave numbers
+    Ny, Nx = Jx.shape
+    kx = np.fft.fftfreq(Nx) * Nx
+    ky = np.fft.fftfreq(Ny) * Ny
+    Kx, Ky = np.meshgrid(kx, ky)
+
+    # check for non-zero divergence or DC component
+    validate_current_density(x_spectrum, y_spectrum, Kx, Ky, tolerance=0.05)
+
+    # compute psi
     K_squared = Kx ** 2 + Ky ** 2
-
     with np.errstate(divide='ignore', invalid='ignore'):
-        fft_psi_shifted = (-1j * Kx * fft_Jy_shifted + 1j * Ky * fft_Jx_shifted) / K_squared
+        psi_fft = (-1j * Kx * y_spectrum + 1j * Ky * x_spectrum) / K_squared
+
+    # shift the frequency spectrumm so it's centered
+    psi_fft_shifted = np.fft.fftshift(psi_fft)
 
     # The DC component is now in the center of the array instead of [0,0]
-    fft_psi_shifted[K_squared == 0] = 0.0
+    dc = int(Nx / 2)
 
-    return fft_psi_shifted
+    # it's also a meaningless gauge (psi is relative), so set it to 0
+    psi_fft_shifted[dc][dc] = 0.0
+
+    return psi_fft_shifted
