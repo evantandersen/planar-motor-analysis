@@ -1,11 +1,18 @@
+import argparse
+import enum
 import sys
 
 import numpy as np
 
 from analysis import analyze
-from geometry.dlpm_2013 import double_layer_planar_motor
-from geometry.dlpm_2022_Kleijer import dlpm_2022
-from geometry.ideal_distributed import ideal_5_phase, ideal_4_phase
+from geometry import (
+    copam_2009,
+    double_layer_planar_motor,
+    dlpm_2022,
+    ideal_4_phase,
+    ideal_5_phase,
+    concentrated_5_phase,
+)
 from linalg import *
 
 
@@ -157,18 +164,47 @@ def generate_tight_biased_frame_v3(ratio=3.0):
     return frame
 
 
+class MotorType(enum.Enum):
+    """Motor configurations.
+
+    Each member has a description and a constructor function that returns
+    a Motor instance.
+    """
+    IDEAL_4_PHASE = ('Ideal 4-Phase', ideal_4_phase)
+    IDEAL_5_PHASE = ('Ideal 5-Phase', ideal_5_phase)
+    DLPM_2013 = ('DLPM 2013', double_layer_planar_motor)
+    DLPM_2022 = ('DLPM 2022', dlpm_2022)
+    COPAM_2009 = ('COPAM 2009', copam_2009)
+    # FOUR_PHASE_LINEAR = ('Four-Phase Linear', four_phase_linear)
+    CONCENTRATED_5_PHASE = ('Concentrated 5-Phase', concentrated_5_phase)
+
+    def __init__(self, description, constructor):
+        self.description = description
+        self.constructor = constructor
+
+    def make_motor(self):
+        return self.constructor()
+
+
+def _parse_args():
+    """Parses command-line arguments."""
+    parser = argparse.ArgumentParser(description="Analyze different motor phase configurations.")
+    parser.add_argument(
+        '--motor',
+        type=str,
+        choices=[m.name for m in MotorType],
+        default=MotorType.IDEAL_4_PHASE.name,
+        help='The motor configuration to analyze.'
+    )
+    return parser.parse_args()
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+    args = _parse_args()
     np.set_printoptions(suppress=True, precision=3)
 
-    # motor = ideal_4_phase()
-    # motor = double_layer_planar_motor()
-    # motor = dlpm_2022()
-    # motor = copam_2009()
-    # motor = four_phase_linear()
-    # motor = concentrated_5_phase()
-    motor = ideal_4_phase()
+    motor = MotorType[args.motor].make_motor()
     analyze(motor)
     sys.exit(0)
 
