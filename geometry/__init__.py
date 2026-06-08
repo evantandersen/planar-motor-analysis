@@ -1,4 +1,4 @@
-"""Geometry module for defining motor configurations."""
+"""Geometry module for defining motor and coil configurations."""
 
 from geometry.concentrated_5_phase import concentrated_5_phase
 from geometry.copam import copam_2009
