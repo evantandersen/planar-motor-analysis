@@ -12,6 +12,7 @@ from geometry import (
     ideal_4_phase,
     ideal_5_phase,
     concentrated_5_phase,
+    ubc_2012,
 )
 from linalg import *
 
@@ -177,6 +178,7 @@ class MotorType(enum.Enum):
     COPAM_2009 = ('COPAM 2009', copam_2009)
     # FOUR_PHASE_LINEAR = ('Four-Phase Linear', four_phase_linear)
     CONCENTRATED_5_PHASE = ('Concentrated 5-Phase', concentrated_5_phase)
+    UBC_2012 = ('UBC 2012', ubc_2012)
 
     def __init__(self, description, constructor):
         self.description = description
@@ -205,6 +207,7 @@ if __name__ == '__main__':
     np.set_printoptions(suppress=True, precision=3)
 
     motor = MotorType[args.motor].make_motor()
+
     analyze(motor)
     sys.exit(0)
 

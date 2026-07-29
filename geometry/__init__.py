@@ -5,7 +5,7 @@ from geometry.copam import copam_2009
 from geometry.dlpm_2013 import double_layer_planar_motor
 from geometry.dlpm_2022_Kleijer import dlpm_2022
 from geometry.ideal_distributed import ideal_4_phase, ideal_5_phase
-from geometry.racetrack import racetrack_coil
+from geometry.ubc_2012 import ubc_2012
 
 __all__ = [
     "concentrated_5_phase",
@@ -14,5 +14,5 @@ __all__ = [
     "dlpm_2022",
     "ideal_4_phase",
     "ideal_5_phase",
-    "racetrack_coil",
+    "ubc_2012"
 ]

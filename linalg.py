@@ -40,13 +40,13 @@ def compute_simplex_frame(n):
 
 def power_range(phases):
     """
-    Calculates the lower and upper bounds of the power required to span all vectors in the space
+    Calculates the lower bound, average, and upper bounds of the power required to span all vectors in the space
 
     Parameters:
     phases (np.ndarray): A matrix where each column is a frame vector representing a physical phase
 
     Returns:
-    tuple: (lower_bound, upper_bound)
+    tuple: (lower_bound, avg, upper_bound)
     """
     # Compute the frame operator S = A * A.H
     # (A.H is the conjugate transpose)
@@ -55,20 +55,13 @@ def power_range(phases):
     # Step 2: Compute the eigenvalues of the Hermitian frame operator
     eigenvalues = np.linalg.eigvalsh(frame_operator)
 
-    eigen_inv = 1/eigenvalues
-    avg = np.sum(eigen_inv) / frame_operator.shape[0]
-
-    # Step 3: The frame bounds are the min and max eigenvalues
-    frame_low = np.min(eigenvalues)
-    frame_high = np.max(eigenvalues)
-
     # The frame vectors describe the location of flux produced by the coils
     # Therefore the current required is the inverse of this frame,
     # which is called the canonical dual frame
-    lower_bound = np.min(eigen_inv)
-    upper_bound = np.max(eigen_inv)
+    eigen_inv = 1/eigenvalues
 
-    return lower_bound, avg, upper_bound
+    # the min, avg, and max power required comes directly from the inverted eigenvalues
+    return np.min(eigen_inv), np.mean(eigen_inv), np.max(eigen_inv)
 
 def angle_range(vectors):
     n = vectors.shape[1]
@@ -85,3 +78,29 @@ def angle_range(vectors):
             k += 1
 
     return np.min(angles), np.max(angles)
+
+
+def find_minimal_energy_coefficients(F, x):
+    """
+    Finds the minimal L2-energy coefficients to represent vector x
+    using the frame matrix F.
+
+    Parameters:
+    F (numpy.ndarray): An (N, M) matrix where columns are the frame vectors (M > N).
+    x (numpy.ndarray): An (N, 1) target column vector.
+
+    Returns:
+    c (numpy.ndarray): An (M, 1) column vector of optimal coefficients.
+    """
+    # Ensure inputs are float arrays for numerical stability
+    F = np.asarray(F, dtype=float)
+    x = np.asarray(x, dtype=float)
+
+    # Compute the Moore-Penrose pseudoinverse of F
+    # F_pinv will have a shape of (M, N)
+    F_pinv = np.linalg.pinv(F)
+
+    # Calculate the minimal energy coefficients: c = F^\dagger * x
+    c = np.dot(F_pinv, x)
+
+    return c

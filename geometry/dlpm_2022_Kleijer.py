@@ -1,7 +1,7 @@
 import numpy as np
 
 from analysis import Motor, Phase
-from geometry.racetrack import racetrack_coil
+from geometry.racetrack import generate_racetrack_coil
 
 # Optimization of Quasi-Halbach Topologies to Maximize the Acceleration of Moving-Magnet Planar Motors
 # M. Kleijer; J. W. Jansen; E. A. Lomonova
@@ -18,17 +18,17 @@ def dlpm_2022():
     # here it is total length of the coil, so we can compute it easily:
     coil_length = 47.1 + bundle_width
 
-    coil = racetrack_coil(pole_pitch, coil_width, bundle_width, coil_length, span=2)
+    coil = generate_racetrack_coil(pole_pitch, coil_width, bundle_width, coil_length)
     phases = [
         #y forcers
-        Phase(theta=0, phi=-4*np.pi/3, z_rotation=False),
+        Phase(theta=0, phi=-2/3, z_rotation=False),
         Phase(theta=0, phi=0, z_rotation=False),
-        Phase(theta=0, phi=4*np.pi/3, z_rotation=False),
+        Phase(theta=0, phi=2/3, z_rotation=False),
 
         #x forcers
-        Phase(theta=-4*np.pi/3, phi=0, z_rotation=True),
+        Phase(theta=-2/3, phi=0, z_rotation=True),
         Phase(theta=0, phi=0, z_rotation=True),
-        Phase(theta=4*np.pi/3, phi=0, z_rotation=True),
+        Phase(theta=2/3, phi=0, z_rotation=True),
     ]
 
     return Motor(coil=coil, phases=phases)
