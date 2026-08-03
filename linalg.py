@@ -48,9 +48,8 @@ def power_range(phases):
     Returns:
     tuple: (lower_bound, avg, upper_bound)
     """
-    # Compute the frame operator S = A * A.H
-    # (A.H is the conjugate transpose)
-    frame_operator = np.dot(phases, phases.conj().T)
+    # Compute the frame operator S = A * A.T
+    frame_operator = phases @ phases.T
 
     # Step 2: Compute the eigenvalues of the Hermitian frame operator
     eigenvalues = np.linalg.eigvalsh(frame_operator)
