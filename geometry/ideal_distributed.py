@@ -19,9 +19,6 @@ def ideal_combined_dist(n=1000):
     return Coil(X, Y, n)
 
 def get_5cell_clifford_phases():
-    # Indices for the 5 vertices
-    k = np.arange(5)
-
     phases = []
     for i in range(5):
         # Angles with winding speeds 1 and 2

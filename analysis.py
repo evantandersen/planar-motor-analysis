@@ -23,7 +23,10 @@ def analyze(motor: Motor):
     # the area consumed by the coil
     area = motor.coil.j_x.size * scaling_factor
 
-    print(f"Fundamental: {np.linalg.norm(fund)**2:.3f}, Loss={coil_loss:.3f} Area={area:.3f}")
+    # --- THD Calculation (Least-Squares Orthogonal Projection) ---
+    thd = compute_thd(motor.coil)
+
+    print(f"Fundamental: {np.linalg.norm(fund) ** 2:.3f}, Loss={coil_loss:.3f} Area={area:.3f}, THD={thd * 100:.2f}%")
 
     # the secret sauce. The force from any coil can be scaled up or down by changing physical size or current density
     # this compensates for those effects to produce a normalized value for any coil
@@ -75,3 +78,81 @@ def analyze(motor: Motor):
 
 
     plot_analysis(motor, phases)
+
+
+def compute_thd(coil: Coil) -> float:
+    """
+    Computes the Total Harmonic Distortion (THD) of the coil's spatial current distribution
+    using a boundary-aware Least-Squares projection to preserve orthogonality over non-integer coil dimensions.
+    """
+    ny, nx = coil.j_x.shape
+    dA = 1.0 / (coil.scaling ** 2)
+
+    # Total spatial power (mean squared current density integrated over physical area)
+    p_total = np.sum(coil.j_x**2 + coil.j_y**2) * dA
+
+    if p_total == 0:
+        return 0.0
+
+    # Spatial coordinates centered at origin
+    mx = np.arange(nx) - (nx - 1) / 2.0
+    my = np.arange(ny) - (ny - 1) / 2.0
+
+    phase_x = 2.0 * np.pi * mx / coil.scaling
+    phase_y = 2.0 * np.pi * my / coil.scaling
+
+    # 1. Fit fundamental J_y component (drives X-wave force)
+    p1_y = _fit_fundamental_power_1d(coil.j_y, phase_x, axis=1, dA=dA)
+
+    # 2. Fit fundamental J_x component (drives Y-wave force)
+    p1_x = _fit_fundamental_power_1d(coil.j_x, phase_y, axis=0, dA=dA)
+
+    # Sum of fundamental powers across both components
+    p1_total = p1_x + p1_y
+
+    # Calculate residual harmonic power using Parseval's relation
+    p_harmonics = max(0.0, p_total - p1_total)
+
+    # THD is the ratio of harmonic RMS to fundamental RMS
+    thd = np.sqrt(p_harmonics / p1_total) if p1_total > 0 else 0.0
+
+    return float(thd)
+
+
+def _fit_fundamental_power_1d(j_array: np.ndarray, phase: np.ndarray, axis: int, dA: float) -> float:
+    """
+    Solves the 2x2 Gram matrix equation G @ [A, B]^T = b to project j_array onto
+    [cos(k*x), sin(k*x)] strictly within the physical coil boundaries.
+    """
+    cos_p = np.cos(phase)
+    sin_p = np.sin(phase)
+
+    # Build 2x2 Gram matrix (integrals of basis function overlaps over the finite domain)
+    # If the coil length is an exact integer multiple of lambda,
+    # G_12 and G_21 decay to 0, matching standard Fourier integration.
+    g11 = np.sum(cos_p**2) * dA * (j_array.shape[0] if axis == 1 else j_array.shape[1])
+    g22 = np.sum(sin_p**2) * dA * (j_array.shape[0] if axis == 1 else j_array.shape[1])
+    g12 = np.sum(cos_p * sin_p) * dA * (j_array.shape[0] if axis == 1 else j_array.shape[1])
+
+    G = np.array([[g11, g12],
+                  [g12, g22]])
+
+    # Vector b: Inner product of current waveform with the basis functions
+    if axis == 1:  # Integrating along x-axis (columns)
+        b1 = np.sum(j_array @ cos_p) * dA
+        b2 = np.sum(j_array @ sin_p) * dA
+    else:          # Integrating along y-axis (rows)
+        b1 = np.sum(cos_p @ j_array) * dA
+        b2 = np.sum(sin_p @ j_array) * dA
+
+    b = np.array([b1, b2])
+
+    # Solve G * [A, B]^T = b for optimal coefficients A, B
+    try:
+        A, B = np.linalg.solve(G, b)
+    except np.linalg.LinAlgError:
+        return 0.0
+
+    # Calculate exact spatial power of the fundamental projection over the domain
+    p1 = (A**2 * g11) + (2 * A * B * g12) + (B**2 * g22)
+    return max(0.0, float(p1))
