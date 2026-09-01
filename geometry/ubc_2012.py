@@ -14,10 +14,17 @@ width = 1/6
 
 def ubc_2012():
 
-    Jx = np.full((int(N*width), N), 1)
+    Jx = np.zeros((N, N))
     Jy = np.zeros_like(Jx)
 
-    coil = Coil(Jx, Jy, N)
+    w = int(N*width)
+    half = N // 2
+    Jx[:w, :] = 1
+    Jx[half:half+w, :] = -1
+
+    mask = np.where(Jx != 0, 1, 0)
+
+    coil = Coil(Jx, Jy, N, mask)
 
     phases = [
         #y forcers

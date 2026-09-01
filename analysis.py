@@ -23,6 +23,9 @@ def analyze(motor: Motor):
     # the area consumed by the coil
     area = motor.coil.j_x.size * scaling_factor
 
+    if motor.coil.mask is not None:
+        area *= np.sum(motor.coil.mask) * scaling_factor
+
     # --- THD Calculation (Least-Squares Orthogonal Projection) ---
     thd = compute_thd(motor.coil)
 
